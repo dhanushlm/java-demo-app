@@ -16,7 +16,7 @@ pipeline {
         {
             steps
             {
-                sh '/opt/maven/bin/mvn compile'
+                sh 'mvn compile'
             }
         }
         stage('Package') 
