@@ -1,44 +1,57 @@
 pipeline {
-    agent {
-        label 'test'
+    agent any
+
+    environment {
+        IMAGE_NAME = "auth-service"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        REGISTRY = "dhanushlm/devops"
     }
 
-    stages 
-    {
-        stage('Clone') 
-        {
-            steps
-            {
-                git changelog: false, poll: false, url: 'https://github.com/dhanushlm/java-demo-app.git'
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'develop', url: 'https://github.com/dhanushlm/auth-service.git'
             }
         }
-        stage('Compile') 
-        {
-            steps
-            {
-                sh 'mvn compile'
+
+        stage('Build with Maven') {
+            steps {
+                sh 'mvn clean package'
             }
         }
-        stage('Package') 
-        {
-            steps
-            {
-                sh '/opt/maven/bin/mvn package'
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} .'
             }
         }
-        stage('Build Image') 
-        {
-            steps
-            {
-                sh 'docker build -t demo-java-app .'
+
+        stage('Push to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials',
+                                          usernameVariable: 'DOCKER_USER',
+                                          passwordVariable: 'DOCKER_PASS')]) {
+                sh '''
+                docker login -u $DOCKER_USER -p $DOCKER_PASS
+                docker push ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                '''
+        }
+    }                        
+
+        stage('Deploy to Kubernetes (Testing)') {
+            steps {
+                sh 'kubectl apply -f k8s/deployment.yaml'
+                sh 'kubectl apply -f k8s/service.yaml'
             }
         }
-        stage('Docker run') 
-        {
-            steps
-            {
-                sh 'docker run -dt --name java-c1 -p 82:80 demo-java-app'
-            }
+    }
+
+    post {
+        success {
+            echo '✅ Deployment to Kubernetes testing environment completed successfully.'
+        }
+        failure {
+            echo '❌ Build or deployment failed. Please check logs.'
         }
     }
 }
