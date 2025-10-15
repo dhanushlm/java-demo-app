@@ -51,7 +51,7 @@ pipeline {
             echo '✅ Deployment to Kubernetes testing environment completed successfully.'
         }
         failure {
-            echo '❌ Build or deployment failed. Please check logs.'
+            echo '❌ Build or deployment failed. Please check logs'
         }
     }
 }
